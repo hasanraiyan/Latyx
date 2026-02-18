@@ -10,6 +10,8 @@ const navLinks = [
   { label: 'FAQ', href: '#faq' },
 ];
 
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -53,15 +55,28 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign in
-            </Button>
-            <Button size="sm" className="shadow-md gap-1.5" asChild>
-              <Link to="/editor">
-                Open Editor
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </Button>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="ghost" size="sm">
+                  Sign in
+                </Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button size="sm" className="shadow-md">
+                  Get Started
+                </Button>
+              </SignUpButton>
+            </SignedOut>
+
+            <SignedIn>
+              <Button size="sm" variant="ghost" className="gap-1.5" asChild>
+                <Link to="/editor">
+                  Open Editor
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
+              <UserButton />
+            </SignedIn>
           </div>
 
           {/* Mobile toggle */}
@@ -89,15 +104,28 @@ export default function Navbar() {
               </a>
             ))}
             <div className="pt-3 flex flex-col gap-2">
-              <Button variant="outline" className="w-full">
-                Sign in
-              </Button>
-              <Button className="w-full gap-1.5" asChild>
-                <Link to="/editor">
-                  Open Editor
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </Button>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button variant="outline" className="w-full">
+                    Sign in
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button className="w-full">Get Started</Button>
+                </SignUpButton>
+              </SignedOut>
+
+              <SignedIn>
+                <Button className="w-full gap-1.5" asChild>
+                  <Link to="/editor">
+                    Open Editor
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
+                <div className="flex justify-center py-2">
+                  <UserButton showName />
+                </div>
+              </SignedIn>
             </div>
           </div>
         </div>

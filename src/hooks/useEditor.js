@@ -151,10 +151,7 @@ export function useEditor() {
               }
 
               case 'message': {
-                setAssistMessages((prev) => [
-                  ...prev,
-                  { role: 'assistant', content: event.text },
-                ]);
+                setAssistMessages((prev) => [...prev, { role: 'assistant', content: event.text }]);
                 break;
               }
 
@@ -183,10 +180,7 @@ export function useEditor() {
         setAssistStatus('success');
       } catch (err) {
         const msg = err.message || 'AI assist failed';
-        setAssistMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: `❌ Error: ${msg}` },
-        ]);
+        setAssistMessages((prev) => [...prev, { role: 'assistant', content: `❌ Error: ${msg}` }]);
         setAssistStatus('error');
         toast.error('AI assist failed');
       }

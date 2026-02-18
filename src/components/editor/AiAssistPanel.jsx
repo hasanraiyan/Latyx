@@ -4,7 +4,17 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Button } from '@/components/ui/button';
-import { Bot, Send, User, Sparkles, Wrench, ChevronDown, Copy, CheckCheck, Trash2 } from 'lucide-react';
+import {
+  Bot,
+  Send,
+  User,
+  Sparkles,
+  Wrench,
+  ChevronDown,
+  Copy,
+  CheckCheck,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Code block with syntax highlighting + copy button ─────────────────────────
@@ -213,8 +223,9 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
               className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === 'user' ? 'bg-primary' : 'bg-muted border border-border'
-                  }`}
+                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                  msg.role === 'user' ? 'bg-primary' : 'bg-muted border border-border'
+                }`}
               >
                 {msg.role === 'user' ? (
                   <User className="w-3 h-3 text-primary-foreground" />
@@ -224,10 +235,11 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
               </div>
 
               <div
-                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                  : 'bg-muted text-foreground rounded-tl-sm'
-                  }`}
+                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                    : 'bg-muted text-foreground rounded-tl-sm'
+                }`}
               >
                 {msg.role === 'assistant' ? (
                   <MdContent content={msg.content} />
