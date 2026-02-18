@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { compile } from '@/lib/api';
 import { DEFAULT_LATEX } from '@/lib/constants';
 import { toast } from 'sonner';
@@ -7,6 +8,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export function useEditor() {
+  const { getToken } = useAuth();
   const [sourceCode, setSourceCode] = useLocalStorage('latexSource', DEFAULT_LATEX);
   const [compiler, setCompiler] = useLocalStorage('latexCompiler', 'pdflatex');
   const [designSystemId, setDesignSystemId] = useState(null);
@@ -39,7 +41,8 @@ export function useEditor() {
     setCompileStatus('loading');
     const start = Date.now();
     try {
-      const result = await compile({ source_code: sourceCode, compiler });
+      const token = await getToken();
+      const result = await compile({ source_code: sourceCode, compiler }, false, token);
       const elapsed = ((Date.now() - start) / 1000).toFixed(2);
       setCompileTime(elapsed);
 
@@ -73,9 +76,13 @@ export function useEditor() {
       setAssistMessages((prev) => [...prev, { role: 'user', content: prompt }]);
 
       try {
+        const token = await getToken();
         const response = await fetch(`${API_BASE}/assist`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             source_code: sourceCode,
             prompt,
@@ -93,11 +100,6 @@ export function useEditor() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-
-        // Track pending tool_start cards by name so tool_end can update them
-        // We use a Map: toolName → unique message id (index in assistMessages)
-        // Since state is immutable snapshots, we'll use a local array and flush at the end.
-        // For real-time updates we push directly via setAssistMessages functional updates.
 
         // Each tool gets a stable key so we can update it in place
         const toolKeyMap = {}; // name → key string
