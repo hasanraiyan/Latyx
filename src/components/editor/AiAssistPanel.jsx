@@ -14,6 +14,11 @@ import {
   Copy,
   CheckCheck,
   Trash2,
+  FileText,
+  Edit3,
+  Search,
+  Globe,
+  FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -108,12 +113,76 @@ function MdContent({ content }) {
   );
 }
 
+// ── Tool metadata helper (labels + icons) ──────────────────────────────────
+function getToolMetadata(tool) {
+  const name = tool.name;
+  let args = tool.args || {};
+
+  // If args is a string (streaming), try to parse it if it looks like JSON
+  if (typeof args === 'string') {
+    try {
+      args = JSON.parse(args);
+    } catch {
+      args = {};
+    }
+  }
+
+  switch (name) {
+    case 'read_file': {
+      const filename = args.filename || 'document.tex';
+      return {
+        label: `Reading ${filename}`,
+        icon: FileText,
+      };
+    }
+    case 'write_file': {
+      const filename = args.filename || 'document.tex';
+      return {
+        label: `Updating ${filename}`,
+        icon: Edit3,
+      };
+    }
+    case 'replace_text': {
+      const filename = args.filename || 'document.tex';
+      return {
+        label: `Replacing text in ${filename}`,
+        icon: Edit3,
+      };
+    }
+    case 'insert_line': {
+      const filename = args.filename || 'document.tex';
+      return {
+        label: `Inserting line @${args.line_number} in ${filename}`,
+        icon: Edit3,
+      };
+    }
+    case 'delete_line': {
+      const filename = args.filename || 'document.tex';
+      return {
+        label: `Deleting line @${args.line_number} in ${filename}`,
+        icon: Edit3,
+      };
+    }
+    case 'tavily_search':
+      return {
+        label: `Searching web for "${args.query || '...'}"`,
+        icon: Globe,
+      };
+    default:
+      return {
+        label: `Executing ${name}...`,
+        icon: Wrench,
+      };
+  }
+}
+
 // ── Tool call card ──────────────────────────────────────────────────────────
 function ToolCard({ tool }) {
-  // Derive open from pending: closed while running, open once done
-  const [manualOpen, setManualOpen] = useState(null); // null = follow prop
+  const { label, icon: Icon } = getToolMetadata(tool);
+  const [manualOpen, setManualOpen] = useState(null);
   const isPending = tool.pending;
-  const open = manualOpen !== null ? manualOpen : false; // always start collapsed
+  const isStreaming = tool.isStreaming;
+  const open = manualOpen !== null ? manualOpen : false;
 
   const outputText =
     typeof tool.output === 'string'
@@ -125,40 +194,51 @@ function ToolCard({ tool }) {
         : null;
 
   return (
-    <div className="rounded-lg border border-border bg-muted/40 text-xs font-mono overflow-hidden">
+    <div className={`rounded-xl border transition-all ${isPending ? 'border-primary/30 bg-primary/5' : 'border-border bg-muted/20 hover:bg-muted/30'} text-[11px] font-mono overflow-hidden`}>
       <button
         onClick={() => !isPending && setManualOpen((o) => !(o === null ? !isPending : o))}
-        className={`w-full flex items-center justify-between px-3 py-2 transition-colors text-left ${isPending ? 'cursor-default' : 'hover:bg-muted/60'}`}
+        className={`w-full flex items-center justify-between px-3 py-2 transition-colors text-left overflow-hidden ${isPending ? 'cursor-default' : 'hover:bg-muted/40'}`}
       >
-        <span className="flex items-center gap-2 font-semibold text-primary">
+        <div className="flex items-center gap-2.5 font-medium min-w-0 flex-1">
           {isPending ? (
-            <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+            <div className="relative shrink-0">
+              <Icon className="w-3.5 h-3.5 text-primary shrink-0" />
+              <div className="absolute inset-0 bg-primary rounded-full animate-ping opacity-25" />
+            </div>
           ) : (
-            <Wrench className="w-3 h-3 shrink-0" />
+            <Icon className="w-3.5 h-3.5 text-primary/60 shrink-0" />
           )}
-          {isPending ? `Running: ${tool.name}…` : `Used tool: ${tool.name}`}
-        </span>
+          <span className={`truncate flex-1 ${isPending ? 'text-primary font-semibold' : 'text-foreground/80'}`}>
+            {label}
+          </span>
+        </div>
         {!isPending && (
           <ChevronDown
-            className={`w-3 h-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
+            className={`w-3 h-3 text-muted-foreground/40 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           />
         )}
       </button>
 
       {open && !isPending && (
-        <div className="border-t border-border px-3 py-2 space-y-2">
+        <div className="border-t border-border/50 px-3 py-2.5 space-y-3 bg-background/40">
           {tool.args && (
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground mb-1">Input:</p>
-              <pre className="bg-background rounded border border-border p-2 text-[10px] overflow-x-auto whitespace-pre-wrap">
+              <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-tight mb-1.5 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-primary/40" />
+                Input
+              </p>
+              <pre className="bg-muted/50 rounded-lg border border-border/50 p-2.5 text-[10px] overflow-x-auto whitespace-pre-wrap leading-relaxed shadow-inner">
                 {JSON.stringify(tool.args, null, 2)}
               </pre>
             </div>
           )}
           {outputText != null && (
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground mb-1">Output:</p>
-              <pre className="bg-background rounded border border-border p-2 text-[10px] overflow-x-auto whitespace-pre-wrap text-muted-foreground">
+              <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-tight mb-1.5 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-green-500/40" />
+                Output
+              </p>
+              <pre className="bg-muted/50 rounded-lg border border-border/50 p-2.5 text-[10px] overflow-x-auto whitespace-pre-wrap leading-relaxed text-muted-foreground/80 shadow-inner">
                 {outputText}
               </pre>
             </div>
@@ -235,8 +315,8 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
 
               <div
                 className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                    : 'bg-muted text-foreground rounded-tl-sm'
+                  ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                  : 'bg-muted text-foreground rounded-tl-sm'
                   }`}
               >
                 {msg.role === 'assistant' ? (

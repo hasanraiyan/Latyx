@@ -28,7 +28,7 @@ export default function CodePanel({ sourceCode, setSourceCode, onCompile }) {
     <div className="flex flex-col h-full bg-background overflow-hidden" onKeyDown={handleKeyDown}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/30 shrink-0">
-        <span className="text-xs font-medium text-muted-foreground font-mono">source.tex</span>
+        <span className="text-xs font-medium text-muted-foreground font-mono">document.tex</span>
         <span className="text-xs text-muted-foreground font-mono">
           {lineCount} lines · {sourceCode.length} chars
         </span>

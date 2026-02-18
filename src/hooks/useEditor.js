@@ -123,42 +123,129 @@ export function useEditor() {
             }
 
             switch (event.type) {
+              case 'message_stream': {
+                setAssistMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (last && last.role === 'assistant' && last.streaming) {
+                    return [
+                      ...prev.slice(0, -1),
+                      { ...last, content: last.content + event.text },
+                    ];
+                  }
+                  return [...prev, { role: 'assistant', content: event.text, streaming: true }];
+                });
+                break;
+              }
+
+              case 'message': {
+                setAssistMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (last && last.role === 'assistant' && last.streaming) {
+                    return [...prev.slice(0, -1), { role: 'assistant', content: event.text }];
+                  }
+                  return [...prev, { role: 'assistant', content: event.text }];
+                });
+                break;
+              }
+
               case 'tool_start': {
-                const key = `tool-${event.name}-${Date.now()}`;
+                const key = event.id || `tool-${event.name}-${Date.now()}`;
                 toolKeyMap[event.name] = key;
-                setAssistMessages((prev) => [
-                  ...prev,
-                  {
-                    role: 'tool',
-                    key,
-                    tool: { name: event.name, args: event.args, output: null, pending: true },
-                  },
-                ]);
+                setAssistMessages((prev) => {
+                  const existingIdx = prev.findIndex((m) => m.key === key);
+                  if (existingIdx !== -1) {
+                    // Standardized sequence: Step 3 (Finalized tool_start)
+                    // Update the existing tool card with full, parsed arguments
+                    return prev.map((msg, i) =>
+                      i === existingIdx
+                        ? { ...msg, tool: { ...msg.tool, args: event.args || {}, isStreaming: false } }
+                        : msg,
+                    );
+                  }
+                  // Standardized sequence: Step 1 (Early tool_start)
+                  return [
+                    ...prev,
+                    {
+                      role: 'tool',
+                      key,
+                      tool: {
+                        name: event.name,
+                        args: event.args || {},
+                        output: null,
+                        pending: true,
+                      },
+                    },
+                  ];
+                });
+                break;
+              }
+
+              case 'tool_args_stream': {
+                const key = event.id || toolKeyMap[event.name];
+                if (key) {
+                  setAssistMessages((prev) => {
+                    const existingIdx = prev.findIndex((m) => m.key === key);
+                    if (existingIdx !== -1) {
+                      return prev.map((msg, i) => {
+                        if (i === existingIdx) {
+                          const currentArgs = msg.tool.args;
+                          const newArgs =
+                            typeof currentArgs === 'string'
+                              ? currentArgs + (event.args || '')
+                              : event.args || '';
+                          return { ...msg, tool: { ...msg.tool, args: newArgs, isStreaming: true } };
+                        }
+                        return msg;
+                      });
+                    } else {
+                      // Upsert: Create tool card if it doesn't exist yet
+                      return [
+                        ...prev,
+                        {
+                          role: 'tool',
+                          key,
+                          tool: {
+                            name: event.name,
+                            args: event.args || '',
+                            output: null,
+                            pending: true,
+                            isStreaming: true,
+                          },
+                        },
+                      ];
+                    }
+                  });
+                }
                 break;
               }
 
               case 'tool_end': {
-                const key = toolKeyMap[event.name];
+                const key = event.id || toolKeyMap[event.name];
                 if (key) {
-                  // Update the matching tool card in place
                   setAssistMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.role === 'tool' && msg.key === key
-                        ? { ...msg, tool: { ...msg.tool, output: event.output, pending: false } }
-                        : msg,
-                    ),
+                    prev.map((msg) => {
+                      if (msg.role === 'tool' && msg.key === key) {
+                        let finalArgs = msg.tool.args;
+                        if (typeof finalArgs === 'string') {
+                          try {
+                            finalArgs = JSON.parse(finalArgs);
+                          } catch {
+                            // Leave as string if not valid JSON
+                          }
+                        }
+                        return {
+                          ...msg,
+                          tool: { ...msg.tool, args: finalArgs, output: event.output, pending: false },
+                        };
+                      }
+                      return msg;
+                    }),
                   );
                 }
                 break;
               }
 
-              case 'message': {
-                setAssistMessages((prev) => [...prev, { role: 'assistant', content: event.text }]);
-                break;
-              }
-
               case 'vfs_update': {
-                // Real-time code update from AI - update editor content immediately
                 if (event.filename && event.content !== undefined) {
                   setSourceCode(event.content);
                 }
@@ -169,6 +256,10 @@ export function useEditor() {
                 if (event.source_code) {
                   setSourceCode(event.source_code);
                 }
+                // Finalize any streaming messages
+                setAssistMessages((prev) =>
+                  prev.map((msg) => (msg.streaming ? { ...msg, streaming: false } : msg)),
+                );
                 break;
               }
 
