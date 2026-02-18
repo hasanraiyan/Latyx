@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Button } from '@/components/ui/button';
-import { Bot, Send, User, Sparkles, Wrench, ChevronDown, Copy, CheckCheck } from 'lucide-react';
+import { Bot, Send, User, Sparkles, Wrench, ChevronDown, Copy, CheckCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Code block with syntax highlighting + copy button ─────────────────────────
@@ -100,43 +100,59 @@ function MdContent({ content }) {
 
 // ── Tool call card ──────────────────────────────────────────────────────────
 function ToolCard({ tool }) {
-  const [open, setOpen] = useState(false);
+  // Derive open from pending: closed while running, open once done
+  const [manualOpen, setManualOpen] = useState(null); // null = follow prop
+  const isPending = tool.pending;
+  const open = manualOpen !== null ? manualOpen : false; // always start collapsed
+
   const outputText =
     typeof tool.output === 'string'
       ? tool.output.length > 500
         ? tool.output.slice(0, 500) + '… (truncated)'
         : tool.output
-      : JSON.stringify(tool.output, null, 2);
+      : tool.output != null
+        ? JSON.stringify(tool.output, null, 2)
+        : null;
 
   return (
     <div className="rounded-lg border border-border bg-muted/40 text-xs font-mono overflow-hidden">
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/60 transition-colors text-left"
+        onClick={() => !isPending && setManualOpen((o) => !(o === null ? !isPending : o))}
+        className={`w-full flex items-center justify-between px-3 py-2 transition-colors text-left ${isPending ? 'cursor-default' : 'hover:bg-muted/60'}`}
       >
         <span className="flex items-center gap-2 font-semibold text-primary">
-          <Wrench className="w-3 h-3 shrink-0" />
-          Used tool: {tool.name}
+          {isPending ? (
+            <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+          ) : (
+            <Wrench className="w-3 h-3 shrink-0" />
+          )}
+          {isPending ? `Running: ${tool.name}…` : `Used tool: ${tool.name}`}
         </span>
-        <ChevronDown
-          className={`w-3 h-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
-        />
+        {!isPending && (
+          <ChevronDown
+            className={`w-3 h-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        )}
       </button>
 
-      {open && (
+      {open && !isPending && (
         <div className="border-t border-border px-3 py-2 space-y-2">
-          <div>
-            <p className="text-[10px] font-semibold text-muted-foreground mb-1">Input:</p>
-            <pre className="bg-background rounded border border-border p-2 text-[10px] overflow-x-auto whitespace-pre-wrap">
-              {JSON.stringify(tool.args, null, 2)}
-            </pre>
-          </div>
-          <div>
-            <p className="text-[10px] font-semibold text-muted-foreground mb-1">Output:</p>
-            <pre className="bg-background rounded border border-border p-2 text-[10px] overflow-x-auto whitespace-pre-wrap text-muted-foreground">
-              {outputText}
-            </pre>
-          </div>
+          {tool.args && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground mb-1">Input:</p>
+              <pre className="bg-background rounded border border-border p-2 text-[10px] overflow-x-auto whitespace-pre-wrap">
+                {JSON.stringify(tool.args, null, 2)}
+              </pre>
+            </div>
+          )}
+          {outputText != null && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground mb-1">Output:</p>
+              <pre className="bg-background rounded border border-border p-2 text-[10px] overflow-x-auto whitespace-pre-wrap text-muted-foreground">
+                {outputText}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -144,7 +160,7 @@ function ToolCard({ tool }) {
 }
 
 // ── Main panel ───────────────────────────────────────────────────────────────
-export default function AiAssistPanel({ messages, assistStatus, onAssist }) {
+export default function AiAssistPanel({ messages, assistStatus, onAssist, onClear }) {
   const [prompt, setPrompt] = useState('');
   const messagesEndRef = useRef(null);
   const isLoading = assistStatus === 'loading';
@@ -172,14 +188,23 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist }) {
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/30 shrink-0">
         <Sparkles className="w-3.5 h-3.5 text-primary" />
-        <span className="text-xs font-medium text-muted-foreground">AI Assistant</span>
+        <span className="text-xs font-medium text-muted-foreground flex-1">AI Assistant</span>
+        {onClear && (
+          <button
+            onClick={onClear}
+            title="Clear chat history"
+            className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted/60 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.map((msg, i) => {
           if (msg.role === 'tool') {
-            return <ToolCard key={i} tool={msg.tool} />;
+            return <ToolCard key={msg.key || i} tool={msg.tool} />;
           }
 
           return (
@@ -188,9 +213,8 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist }) {
               className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                  msg.role === 'user' ? 'bg-primary' : 'bg-muted border border-border'
-                }`}
+                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === 'user' ? 'bg-primary' : 'bg-muted border border-border'
+                  }`}
               >
                 {msg.role === 'user' ? (
                   <User className="w-3 h-3 text-primary-foreground" />
@@ -200,11 +224,10 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist }) {
               </div>
 
               <div
-                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                    : 'bg-muted text-foreground rounded-tl-sm'
-                }`}
+                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
+                  ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                  : 'bg-muted text-foreground rounded-tl-sm'
+                  }`}
               >
                 {msg.role === 'assistant' ? (
                   <MdContent content={msg.content} />
@@ -233,30 +256,38 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-2 border-t border-border bg-muted/20 shrink-0">
-        <div className="flex gap-2 items-end">
+      {/* ChatGPT-style pill input */}
+      <div className="p-3 border-t border-border bg-background shrink-0">
+        <div className="relative rounded-2xl border border-border bg-muted/30 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
           <textarea
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Ask AI to edit your document…"
-            rows={2}
+            rows={1}
             disabled={isLoading}
-            className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-xs leading-relaxed outline-none focus:border-primary/50 transition-colors placeholder:text-muted-foreground/60 disabled:opacity-50"
+            className="w-full resize-none bg-transparent px-4 pt-3 pb-10 text-xs leading-relaxed outline-none placeholder:text-muted-foreground/50 disabled:opacity-50 max-h-40 overflow-hidden"
+            style={{ height: '42px' }}
           />
-          <Button
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={handleSend}
-            disabled={isLoading || !prompt.trim()}
-          >
-            <Send className="w-3 h-3" />
-          </Button>
+          {/* Bottom row: hint left, send button right */}
+          <div className="absolute bottom-2 right-2 flex items-center justify-end pointer-events-none">
+            <button
+              onClick={handleSend}
+              disabled={isLoading || !prompt.trim()}
+              className="pointer-events-auto w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-primary text-primary-foreground hover:opacity-90 active:scale-95"
+            >
+              {isLoading ? (
+                <span className="w-3 h-3 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" />
+              ) : (
+                <Send className="w-3 h-3" />
+              )}
+            </button>
+          </div>
         </div>
-        <p className="text-[10px] text-muted-foreground/50 mt-1 px-1">
-          Enter to send · Shift+Enter for new line
-        </p>
       </div>
     </div>
   );

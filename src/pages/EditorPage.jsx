@@ -58,6 +58,7 @@ export default function EditorPage() {
               messages={editor.assistMessages}
               assistStatus={editor.assistStatus}
               onAssist={editor.handleAssist}
+              onClear={editor.clearChatHistory}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
