@@ -118,11 +118,24 @@ function getToolMetadata(tool) {
   const name = tool.name;
   let args = tool.args || {};
 
-  // If args is a string (streaming), try to parse it if it looks like JSON
+  // Handle streaming JSON string
   if (typeof args === 'string') {
-    try {
-      args = JSON.parse(args);
-    } catch {
+    if (args.trim().startsWith('{')) {
+      try {
+        args = JSON.parse(args);
+      } catch {
+        // Crude regex-based field extraction for partial JSON streaming
+        const queryMatch = args.match(/"query"\s*:\s*"([^"]*)"/);
+        const filenameMatch = args.match(/"filename"\s*:\s*"([^"]*)"/);
+        const pathMatch = args.match(/"path"\s*:\s*"([^"]*)"/);
+
+        args = {
+          query: queryMatch ? queryMatch[1] : undefined,
+          filename: filenameMatch ? filenameMatch[1] : (pathMatch ? pathMatch[1] : undefined)
+        };
+      }
+    } else {
+      // It's a string but doesn't start like JSON yet (could be just one bit of a field)
       args = {};
     }
   }
@@ -354,8 +367,8 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
                 {/* Avatar */}
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-1 shadow-sm ${msg.role === 'user'
-                      ? 'bg-primary ring-2 ring-primary/20'
-                      : 'bg-muted border border-border'
+                    ? 'bg-primary ring-2 ring-primary/20'
+                    : 'bg-muted border border-border'
                     }`}
                 >
                   {msg.role === 'user' ? (
@@ -378,8 +391,8 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
                   ) : (
                     <div
                       className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${msg.role === 'user'
-                          ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                          : 'bg-muted text-foreground rounded-tl-sm border border-border/40'
+                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                        : 'bg-muted text-foreground rounded-tl-sm border border-border/40'
                         }`}
                     >
                       {msg.role === 'assistant' ? (
