@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SaaS LaTeX Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css" />
+    <!-- Ace Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/mode-latex.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/theme-tomorrow.js"></script>
+  </head>
+
+  <body
+    class="bg-slate-50 text-slate-900 font-sans antialiased overflow-hidden flex flex-col h-screen"
+  >
+    <!-- Header -->
+    <header
+      class="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 shadow-sm z-20 relative h-16 box-border"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm"
+        >
+          L
+        </div>
+        <h1 class="text-xl font-bold text-slate-800 tracking-tight">LaTeX Studio</h1>
+        <span
+          class="text-xs text-indigo-500 font-mono ml-2 border border-indigo-100 bg-indigo-50 px-2 py-0.5 rounded-full uppercase tracking-wider"
+          >Beta</span
+        >
+      </div>
+
+      <div class="flex items-center gap-4">
+        <button
+          id="toggleAiBtn"
+          class="hidden flex items-center gap-1 text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-indigo-100"
+          title="AI Assistant"
+        >
+          <span>✨</span> AI Assistant
+        </button>
+
+        <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+        <select
+          id="compilerSelect"
+          class="bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 outline-none font-medium"
+        >
+          <option value="pdflatex">pdflatex</option>
+          <option value="xelatex" selected>xelatex</option>
+          <option value="lualatex">lualatex</option>
+        </select>
+        <span id="statusText" class="text-sm font-medium text-slate-500 transition-colors"
+          >Ready</span
+        >
+
+        <button
+          id="clearBtn"
+          class="text-slate-500 hover:text-rose-600 px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none"
+          title="Clear Editor"
+        >
+          Clear
+        </button>
+
+        <a
+          id="downloadBtn"
+          href="#"
+          download="document.pdf"
+          class="hidden sm:inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors opacity-50 cursor-not-allowed pointer-events-none"
+          onclick="if (this.classList.contains('cursor-not-allowed')) return false;"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+          Download PDF
+        </a>
+
+        <button
+          id="copyLinkBtn"
+          class="hidden sm:inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors opacity-50 cursor-not-allowed pointer-events-none"
+          title="Copy PDF Link"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            />
+          </svg>
+          <span id="copyLinkText">Copy Link</span>
+        </button>
+
+        <button
+          id="compileBtn"
+          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-md shadow-indigo-200 transition-all focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 active:scale-95"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>Compile</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content (Split Pane) -->
+    <div class="split-container">
+      <!-- Editor Pane -->
+      <div id="editor-pane" class="pane">
+        <div id="editor-container" class="h-full relative">
+          <div id="editor" class="absolute inset-0 text-base"></div>
+        </div>
+      </div>
+
+      <!-- Resizer -->
+      <div id="resizer" class="resizer" title="Drag to resize"></div>
+
+      <!-- Preview Pane -->
+      <div id="preview-pane" class="pane relative">
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay" hidden>
+          <div class="spinner"></div>
+          <p>Compiling document...</p>
+        </div>
+
+        <!-- PDF Iframe -->
+        <iframe id="pdfFrame" title="PDF Preview"></iframe>
+      </div>
+    </div>
+
+    <!-- Log Panel -->
+    <div id="log-panel" class="collapsed">
+      <div class="log-header">
+        <h3 class="font-semibold text-rose-600 text-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          Compilation Log
+        </h3>
+        <div class="flex items-center gap-2">
+          <button
+            id="fixErrorBtn"
+            class="hidden bg-rose-100 text-rose-700 hover:bg-rose-200 px-3 py-1 rounded text-xs font-bold border border-rose-200 transition-colors items-center gap-1"
+          >
+            ✨ Fix with AI
+          </button>
+          <button
+            id="closeLogBtn"
+            class="text-slate-500 hover:text-slate-700 text-sm font-medium px-2 py-1 rounded hover:bg-slate-200 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+      <pre id="log-content"></pre>
+    </div>
+
+    <!-- AI Assistant Panel -->
+    <div
+      id="ai-pane"
+      class="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-30 flex flex-col border-l border-slate-200"
+      style="top: 64px; height: calc(100vh - 64px)"
+    >
+      <!-- Header -->
+      <div
+        class="p-4 border-b border-indigo-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-white"
+      >
+        <h2 class="font-bold text-indigo-900 flex items-center gap-2">
+          <div class="bg-indigo-100 p-1.5 rounded-md">
+            <span class="text-lg">✨</span>
+          </div>
+          AI Assistant
+        </h2>
+        <button
+          id="closeAiBtn"
+          class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- AI Provider Selector -->
+      <div class="px-4 pt-4 pb-0 bg-gradient-to-r from-indigo-50 to-white">
+        <div class="flex flex-col gap-1">
+          <label
+            for="aiProviderSelect"
+            class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider"
+            >AI Model</label
+          >
+          <select
+            id="aiProviderSelect"
+            class="w-full text-xs border border-indigo-200 rounded-md p-2 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm cursor-pointer transition-all hover:border-indigo-300"
+          >
+            <option value="pollinations">Generic (Pollinations)</option>
+            <option value="gemini">Gemini 3.0 Flash</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Design System Selector -->
+      <div
+        class="px-4 pt-2 pb-2 bg-gradient-to-r from-indigo-50 to-white border-b border-indigo-50"
+      >
+        <div class="flex flex-col gap-1">
+          <label
+            for="designSystemSelect"
+            class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider"
+            >Design System</label
+          >
+          <select
+            id="designSystemSelect"
+            class="w-full text-xs border border-indigo-200 rounded-md p-2 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm cursor-pointer transition-all hover:border-indigo-300"
+          >
+            <option value="">None (Standard LaTeX)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Messages Area -->
+      <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50 scroll-smooth">
+        <div
+          class="flex flex-col items-center justify-center h-full text-slate-400 text-sm space-y-4 opacity-70"
+        >
+          <div
+            class="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-2"
+          >
+            <span class="text-3xl">🤖</span>
+          </div>
+          <p class="font-medium text-slate-500">How can I help you today?</p>
+          <div class="flex flex-wrap gap-2 justify-center max-w-[80%]">
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs shadow-sm"
+              >Add a table</span
+            >
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs shadow-sm"
+              >Fix errors</span
+            >
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs shadow-sm"
+              >Change title color</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="p-4 border-t border-slate-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div class="relative">
+          <input
+            type="text"
+            id="aiInput"
+            placeholder="Ask AI to edit code..."
+            class="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-transparent outline-none transition-all shadow-inner placeholder-slate-400"
+          />
+
+          <button
+            id="sendAiBtn"
+            class="absolute right-1.5 top-1.5 p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-200"
+          >
+            <svg
+              class="w-5 h-5 transform rotate-90"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 19l9-2-9-18-9 18 9-2zm0 0v-8"
+              />
+            </svg>
+          </button>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2 text-center">
+          AI can make mistakes. Review generated code.
+        </p>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/app.js?v=20260218"></script>
+  </body>
+</html>

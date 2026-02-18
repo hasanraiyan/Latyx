@@ -1,0 +1,254 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LaTeX Compilation Service",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/design-systems": {
+      "get": {
+        "summary": "Get Design Systems",
+        "operationId": "get_design_systems_design_systems_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get Design Systems Design Systems Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/compile": {
+      "post": {
+        "summary": "Compile Latex",
+        "operationId": "compile_latex_compile_post",
+        "parameters": [
+          {
+            "name": "debug",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include detailed debug diagnostics in compile responses.",
+              "default": false,
+              "title": "Debug"
+            },
+            "description": "Include detailed debug diagnostics in compile responses."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assist": {
+      "post": {
+        "summary": "Assist User",
+        "operationId": "assist_user_assist_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AssistRequest": {
+        "properties": {
+          "source_code": {
+            "type": "string",
+            "minLength": 0,
+            "title": "Source Code"
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Prompt"
+          },
+          "compiler": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(pdflatex|xelatex|lualatex)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compiler"
+          },
+          "design_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Design System Id"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["pollinations", "gemini"],
+            "title": "Provider",
+            "default": "pollinations"
+          }
+        },
+        "type": "object",
+        "required": ["source_code", "prompt"],
+        "title": "AssistRequest"
+      },
+      "CompileRequest": {
+        "properties": {
+          "source_code": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Code"
+          },
+          "compiler": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(pdflatex|xelatex|lualatex)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compiler"
+          }
+        },
+        "type": "object",
+        "required": ["source_code"],
+        "title": "CompileRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
