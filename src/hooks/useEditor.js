@@ -157,6 +157,14 @@ export function useEditor() {
                 break;
               }
 
+              case 'vfs_update': {
+                // Real-time code update from AI - update editor content immediately
+                if (event.filename && event.content !== undefined) {
+                  setSourceCode(event.content);
+                }
+                break;
+              }
+
               case 'done': {
                 if (event.source_code) {
                   setSourceCode(event.source_code);
