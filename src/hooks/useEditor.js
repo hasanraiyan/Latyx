@@ -149,7 +149,7 @@ export function useEditor() {
               }
 
               case 'tool_start': {
-                const key = event.id || `tool-${event.name}-${Date.now()}`;
+                const key = event.id || toolKeyMap[event.name] || `tool-${event.name}-${Date.now()}`;
                 toolKeyMap[event.name] = key;
                 setAssistMessages((prev) => {
                   const existingIdx = prev.findIndex((m) => m.key === key);
@@ -181,41 +181,41 @@ export function useEditor() {
               }
 
               case 'tool_args_stream': {
-                const key = event.id || toolKeyMap[event.name];
-                if (key) {
-                  setAssistMessages((prev) => {
-                    const existingIdx = prev.findIndex((m) => m.key === key);
-                    if (existingIdx !== -1) {
-                      return prev.map((msg, i) => {
-                        if (i === existingIdx) {
-                          const currentArgs = msg.tool.args;
-                          const newArgs =
-                            typeof currentArgs === 'string'
-                              ? currentArgs + (event.args || '')
-                              : event.args || '';
-                          return { ...msg, tool: { ...msg.tool, args: newArgs, isStreaming: true } };
-                        }
-                        return msg;
-                      });
-                    } else {
-                      // Upsert: Create tool card if it doesn't exist yet
-                      return [
-                        ...prev,
-                        {
-                          role: 'tool',
-                          key,
-                          tool: {
-                            name: event.name,
-                            args: event.args || '',
-                            output: null,
-                            pending: true,
-                            isStreaming: true,
-                          },
+                const key = event.id || toolKeyMap[event.name] || `tool-${event.name}-${Date.now()}`;
+                toolKeyMap[event.name] = key;
+
+                setAssistMessages((prev) => {
+                  const existingIdx = prev.findIndex((m) => m.key === key);
+                  if (existingIdx !== -1) {
+                    return prev.map((msg, i) => {
+                      if (i === existingIdx) {
+                        const currentArgs = msg.tool.args;
+                        const newArgs =
+                          typeof currentArgs === 'string'
+                            ? currentArgs + (event.args || '')
+                            : event.args || '';
+                        return { ...msg, tool: { ...msg.tool, args: newArgs, isStreaming: true } };
+                      }
+                      return msg;
+                    });
+                  } else {
+                    // Upsert: Create tool card if it doesn't exist yet
+                    return [
+                      ...prev,
+                      {
+                        role: 'tool',
+                        key,
+                        tool: {
+                          name: event.name,
+                          args: event.args || '',
+                          output: null,
+                          pending: true,
+                          isStreaming: true,
                         },
-                      ];
-                    }
-                  });
-                }
+                      },
+                    ];
+                  }
+                });
                 break;
               }
 

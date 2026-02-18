@@ -291,57 +291,109 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {messages.map((msg, i) => {
-          if (msg.role === 'tool') {
-            return <ToolCard key={msg.key || i} tool={msg.tool} />;
+      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        {(() => {
+          const visibleRows = [];
+          const totalMessages = messages.length;
+
+          for (let i = 0; i < totalMessages; i++) {
+            const msg = messages[i];
+
+            if (msg.role === 'user') {
+              visibleRows.push({ ...msg, type: 'chat' });
+              continue;
+            }
+
+            // Group bot turn (consecutive non-user messages)
+            const turn = [];
+            let j = i;
+            while (j < totalMessages && messages[j].role !== 'user') {
+              turn.push(messages[j]);
+              j++;
+            }
+
+            const isLastBotTurn = (j === totalMessages);
+            i = j - 1;
+
+            const assistantMsgs = turn.filter(m => m.role === 'assistant');
+            const toolMsgs = turn.filter(m => m.role === 'tool');
+
+            // 1. If there's an assistant message, it's the priority. Show it (vanish tools).
+            if (assistantMsgs.length > 0) {
+              visibleRows.push(...assistantMsgs.map(m => ({ ...m, type: 'chat' })));
+              continue; // Move to next interaction
+            }
+
+            // 2. If no text, check if there's an active (pending) tool.
+            const lastTool = toolMsgs[toolMsgs.length - 1];
+            if (lastTool && lastTool.tool.pending) {
+              visibleRows.push({ ...lastTool, type: 'tool_card' });
+              continue;
+            }
+
+            // 3. If turn has no text and no active tool, but it's the latest bot activity and we are loading:
+            // This covers the case where a tool just finished but assistant hasn't started text yet.
+            if (isLastBotTurn && isLoading) {
+              visibleRows.push({ role: 'assistant', type: 'loading', key: 'virtual-loading' });
+            }
           }
 
-          return (
-            <div
-              key={i}
-              className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-            >
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === 'user' ? 'bg-primary' : 'bg-muted border border-border'
-                  }`}
-              >
-                {msg.role === 'user' ? (
-                  <User className="w-3 h-3 text-primary-foreground" />
-                ) : (
-                  <Bot className="w-3 h-3 text-muted-foreground" />
-                )}
-              </div>
+          // Edge case: Loading at the very beginning or after a user message with no bot turn yet.
+          const lastMsg = messages[totalMessages - 1];
+          const hasLastActivityLoading = visibleRows.length > 0 && visibleRows[visibleRows.length - 1].type === 'loading';
+          if (isLoading && (!lastMsg || lastMsg.role === 'user') && !hasLastActivityLoading) {
+            visibleRows.push({ role: 'assistant', type: 'loading', key: 'initial-loading' });
+          }
 
+          return visibleRows.map((msg, i) => {
+            return (
               <div
-                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                  : 'bg-muted text-foreground rounded-tl-sm'
-                  }`}
+                key={msg.key || msg.id || i}
+                className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                {msg.role === 'assistant' ? (
-                  <MdContent content={msg.content} />
-                ) : (
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                {/* Avatar */}
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-1 shadow-sm ${msg.role === 'user'
+                      ? 'bg-primary ring-2 ring-primary/20'
+                      : 'bg-muted border border-border'
+                    }`}
+                >
+                  {msg.role === 'user' ? (
+                    <User className="w-3.5 h-3.5 text-primary-foreground" />
+                  ) : (
+                    <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
+                </div>
 
-        {/* Loading dots */}
-        {isLoading && (
-          <div className="flex gap-2">
-            <div className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center shrink-0">
-              <Bot className="w-3 h-3 text-muted-foreground" />
-            </div>
-            <div className="bg-muted rounded-xl rounded-tl-sm px-3 py-2 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
-            </div>
-          </div>
-        )}
+                {/* Content */}
+                <div className={`flex-1 min-w-0 ${msg.role === 'user' ? 'max-w-[85%]' : 'max-w-[95%]'}`}>
+                  {msg.type === 'tool_card' ? (
+                    <ToolCard tool={msg.tool} />
+                  ) : msg.type === 'loading' ? (
+                    <div className="bg-muted rounded-2xl rounded-tl-sm px-3.5 py-2.5 flex items-center gap-1.5 shadow-sm border border-border/40 w-fit">
+                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
+                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
+                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
+                    </div>
+                  ) : (
+                    <div
+                      className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${msg.role === 'user'
+                          ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                          : 'bg-muted text-foreground rounded-tl-sm border border-border/40'
+                        }`}
+                    >
+                      {msg.role === 'assistant' ? (
+                        <MdContent content={msg.content} />
+                      ) : (
+                        <span className="whitespace-pre-wrap">{msg.content}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          });
+        })()}
 
         <div ref={messagesEndRef} />
       </div>
