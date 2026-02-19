@@ -44,3 +44,26 @@ export const getMyJobs = (token) =>
   api.get('/me/jobs', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.data);
 
 export default api;
+
+
+/** POST /api/v1/api-keys */
+export const createApiKey = (payload, token) =>
+  api
+    .post('/api/v1/api-keys', payload, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    .then((r) => r.data);
+
+/** GET /api/v1/api-keys */
+export const listApiKeys = (token) =>
+  api
+    .get('/api/v1/api-keys', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    .then((r) => r.data);
+
+/** DELETE /api/v1/api-keys/:id */
+export const deleteApiKey = (id, token) =>
+  api.delete(`/api/v1/api-keys/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });

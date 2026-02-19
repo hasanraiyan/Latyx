@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { useTheme } from 'next-themes';
 import { Link } from 'react-router-dom';
-import { Play, ArrowLeft, Moon, Sun, Zap, Cpu, Palette, Bot, Wifi, WifiOff } from 'lucide-react';
+import { Play, ArrowLeft, Moon, Sun, Zap, Cpu, Palette, Bot, Wifi, WifiOff, KeyRound } from 'lucide-react';
 import { COMPILERS, AI_PROVIDERS } from '@/lib/constants';
 
 export default function EditorTopbar({
@@ -181,6 +181,13 @@ export default function EditorTopbar({
       </Tooltip>
 
       <Separator orientation="vertical" className="h-5" />
+
+      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 px-2" asChild>
+        <Link to="/api-keys">
+          <KeyRound className="w-3.5 h-3.5" />
+          {!isMobile && 'API Keys'}
+        </Link>
+      </Button>
 
       {/* Compile button */}
       <Button
