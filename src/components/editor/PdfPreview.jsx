@@ -1,19 +1,106 @@
-import { FileText, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { FileText, Loader2, AlertCircle, Clock, Share2, Download, Link, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function PdfPreview({ pdfUrl, compileStatus, compileTime, onCompile }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    if (!pdfUrl) return;
+
+    // Try native Web Share API first (great for mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Compiled LaTeX PDF',
+          text: 'Check out this LaTeX document compiled with Latyx',
+          url: pdfUrl,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or API not supported — fall through to clipboard
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    // Fallback: copy URL to clipboard
+    try {
+      await navigator.clipboard.writeText(pdfUrl);
+      setCopied(true);
+      toast.success('PDF link copied to clipboard!');
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast.error('Could not copy link. Please copy the URL manually.');
+    }
+  };
+
+  const handleDownload = () => {
+    if (!pdfUrl) return;
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = 'document.pdf';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('Downloading PDF…');
+  };
+
   return (
     <div className="flex flex-col h-full bg-muted/10 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/30 shrink-0">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/30 shrink-0 gap-2">
         <span className="text-xs font-medium text-muted-foreground">PDF Preview</span>
-        {compileTime && compileStatus === 'success' && (
-          <Badge variant="secondary" className="text-xs gap-1 h-5 text-green-600 bg-green-500/10">
-            <Clock className="w-2.5 h-2.5" />
-            {compileTime}s
-          </Badge>
-        )}
+
+        <div className="flex items-center gap-1.5">
+          {compileTime && compileStatus === 'success' && (
+            <Badge variant="secondary" className="text-xs gap-1 h-5 text-green-600 bg-green-500/10">
+              <Clock className="w-2.5 h-2.5" />
+              {compileTime}s
+            </Badge>
+          )}
+
+          {pdfUrl && (
+            <>
+              {/* Share */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={handleShare}
+                  >
+                    {copied ? (
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                    ) : (
+                      <Share2 className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share PDF</TooltipContent>
+              </Tooltip>
+
+              {/* Download */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={handleDownload}
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download PDF</TooltipContent>
+              </Tooltip>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Content */}
