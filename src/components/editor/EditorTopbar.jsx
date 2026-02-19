@@ -25,6 +25,7 @@ export default function EditorTopbar({
   designSystems,
   compileStatus,
   onCompile,
+  isMobile = false,
 }) {
   const { theme, setTheme } = useTheme();
   const isCompiling = compileStatus === 'loading';
@@ -45,30 +46,56 @@ export default function EditorTopbar({
 
       <Separator orientation="vertical" className="h-5" />
 
+      <Separator orientation="vertical" className="h-5" />
+
+      {/* Desktop Controls */}
+      {!isMobile && (
+        <>
+          {/* Compiler select */}
+          <Tooltip>
+            {/* ... */}
+          </Tooltip>
+
+          {/* Design system select */}
+          {designSystems.length > 0 && (
+            <Tooltip>
+              {/* ... */}
+            </Tooltip>
+          )}
+
+          {/* AI provider select */}
+          <Tooltip>
+            {/* ... */}
+          </Tooltip>
+        </>
+      )}
+
       {/* Compiler select */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5">
-            <Cpu className="w-3.5 h-3.5 text-muted-foreground" />
-            <Select value={compiler} onValueChange={setCompiler}>
-              <SelectTrigger className="h-7 text-xs w-32 border-0 bg-muted/50 hover:bg-muted">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COMPILERS.map((c) => (
-                  <SelectItem key={c.value} value={c.value} className="text-xs">
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>LaTeX Compiler</TooltipContent>
-      </Tooltip>
+      {!isMobile && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5">
+              <Cpu className="w-3.5 h-3.5 text-muted-foreground" />
+              <Select value={compiler} onValueChange={setCompiler}>
+                <SelectTrigger className="h-7 text-xs w-32 border-0 bg-muted/50 hover:bg-muted">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMPILERS.map((c) => (
+                    <SelectItem key={c.value} value={c.value} className="text-xs">
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>LaTeX Compiler</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* Design system select */}
-      {designSystems.length > 0 && (
+      {!isMobile && designSystems.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1.5">
@@ -98,26 +125,28 @@ export default function EditorTopbar({
       )}
 
       {/* AI provider select */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5">
-            <Bot className="w-3.5 h-3.5 text-muted-foreground" />
-            <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger className="h-7 text-xs w-36 border-0 bg-muted/50 hover:bg-muted">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AI_PROVIDERS.map((p) => (
-                  <SelectItem key={p.value} value={p.value} className="text-xs">
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>AI Provider</TooltipContent>
-      </Tooltip>
+      {!isMobile && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5">
+              <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+              <Select value={provider} onValueChange={setProvider}>
+                <SelectTrigger className="h-7 text-xs w-36 border-0 bg-muted/50 hover:bg-muted">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AI_PROVIDERS.map((p) => (
+                    <SelectItem key={p.value} value={p.value} className="text-xs">
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>AI Provider</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />
