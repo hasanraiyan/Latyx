@@ -5,11 +5,41 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Cpu, Palette, Bot, Github } from 'lucide-react';
+import { Cpu, Palette, Bot, ChevronRight } from 'lucide-react';
 import { COMPILERS, AI_PROVIDERS } from '@/lib/constants';
+
+function SettingRow({ icon: Icon, label, description, children }) {
+    return (
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                    <p className="text-sm font-medium leading-tight">{label}</p>
+                    {description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{description}</p>
+                    )}
+                </div>
+            </div>
+            <div className="shrink-0">{children}</div>
+        </div>
+    );
+}
+
+function SettingGroup({ title, children }) {
+    return (
+        <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 mb-1.5">
+                {title}
+            </p>
+            <div className="rounded-xl border border-border/70 bg-card overflow-hidden divide-y divide-border/40">
+                {children}
+            </div>
+        </div>
+    );
+}
 
 export default function MobileSettings({
     compiler,
@@ -21,104 +51,96 @@ export default function MobileSettings({
     designSystems = [],
 }) {
     return (
-        <div className="flex flex-col gap-6 p-4 overflow-y-auto h-full pb-20">
-            <div className="space-y-1.5">
-                <h2 className="text-xl font-bold tracking-tight">Settings</h2>
-                <p className="text-sm text-muted-foreground">Customize your editor environment.</p>
+        <div className="flex flex-col gap-6 py-5 overflow-y-auto h-full">
+            {/* Header */}
+            <div className="px-4">
+                <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+                <p className="text-sm text-muted-foreground mt-1">Customize your editor environment.</p>
             </div>
 
             <Separator />
 
-            <div className="space-y-4">
-                {/* Compiler */}
-                <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
-                        <Cpu className="w-3.5 h-3.5" />
-                        Typesetting Engine
-                    </Label>
-                    <Card className="bg-muted/30 border-border/60">
-                        <CardContent className="p-1">
-                            <Select value={compiler} onValueChange={setCompiler}>
-                                <SelectTrigger className="w-full border-0 bg-transparent focus:ring-0">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {COMPILERS.map((c) => (
-                                        <SelectItem key={c.value} value={c.value}>
-                                            <span className="font-medium">{c.label}</span>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </CardContent>
-                    </Card>
-                </div>
+            {/* Compilation Group */}
+            <div className="px-3">
+                <SettingGroup title="Compilation">
+                    <SettingRow
+                        icon={Cpu}
+                        label="LaTeX Engine"
+                        description={COMPILERS.find((c) => c.value === compiler)?.label || compiler}
+                    >
+                        <Select value={compiler} onValueChange={setCompiler}>
+                            <SelectTrigger className="h-8 w-[130px] text-xs bg-muted/50 border-border/60">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {COMPILERS.map((c) => (
+                                    <SelectItem key={c.value} value={c.value} className="text-sm">
+                                        {c.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </SettingRow>
+                </SettingGroup>
+            </div>
 
-                {/* AI Provider */}
-                <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
-                        <Bot className="w-3.5 h-3.5" />
-                        AI Model
-                    </Label>
-                    <Card className="bg-muted/30 border-border/60">
-                        <CardContent className="p-1">
-                            <Select value={provider} onValueChange={setProvider}>
-                                <SelectTrigger className="w-full border-0 bg-transparent focus:ring-0">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {AI_PROVIDERS.map((p) => (
-                                        <SelectItem key={p.value} value={p.value}>
-                                            <span className="font-medium">{p.label}</span>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </CardContent>
-                    </Card>
-                </div>
+            {/* AI Group */}
+            <div className="px-3">
+                <SettingGroup title="AI Assistant">
+                    <SettingRow
+                        icon={Bot}
+                        label="Model Provider"
+                        description={AI_PROVIDERS.find((p) => p.value === provider)?.label || provider}
+                    >
+                        <Select value={provider} onValueChange={setProvider}>
+                            <SelectTrigger className="h-8 w-[130px] text-xs bg-muted/50 border-border/60">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {AI_PROVIDERS.map((p) => (
+                                    <SelectItem key={p.value} value={p.value} className="text-sm">
+                                        {p.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </SettingRow>
 
-                {/* Design System */}
-                <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
-                        <Palette className="w-3.5 h-3.5" />
-                        Style Preset
-                    </Label>
-                    <Card className="bg-muted/30 border-border/60">
-                        <CardContent className="p-1">
+                    {designSystems.length > 0 && (
+                        <SettingRow
+                            icon={Palette}
+                            label="Style Preset"
+                            description={
+                                designSystems.find((ds) => (ds.id || ds.name) === designSystemId)?.name ||
+                                'No preset'
+                            }
+                        >
                             <Select
                                 value={designSystemId || 'none'}
                                 onValueChange={(v) => setDesignSystemId(v === 'none' ? null : v)}
                             >
-                                <SelectTrigger className="w-full border-0 bg-transparent focus:ring-0">
-                                    <SelectValue placeholder="Select a style" />
+                                <SelectTrigger className="h-8 w-[130px] text-xs bg-muted/50 border-border/60">
+                                    <SelectValue placeholder="None" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">
-                                        <span className="text-muted-foreground">Default style</span>
+                                    <SelectItem value="none" className="text-sm">
+                                        Default
                                     </SelectItem>
                                     {designSystems.map((ds) => (
-                                        <SelectItem key={ds.id || ds.name} value={ds.id || ds.name}>
-                                            <span className="font-medium">{ds.name || ds.id}</span>
+                                        <SelectItem key={ds.id || ds.name} value={ds.id || ds.name} className="text-sm">
+                                            {ds.name || ds.id}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </CardContent>
-                    </Card>
-                </div>
+                        </SettingRow>
+                    )}
+                </SettingGroup>
             </div>
 
-            <div className="mt-auto pt-8 flex justify-center opacity-40">
-                <a
-                    href="https://github.com/hasanraiyan/Latyx"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-xs hover:opacity-100 transition-opacity"
-                >
-                    <Github className="w-3.5 h-3.5" />
-                    <span>Open Source</span>
-                </a>
+            {/* Footer */}
+            <div className="mt-auto px-4 pb-4 flex items-center justify-center">
+                <p className="text-xs text-muted-foreground/40">Latyx · Open Source LaTeX Editor</p>
             </div>
         </div>
     );
