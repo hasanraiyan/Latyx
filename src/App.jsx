@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import LandingPage from '@/pages/LandingPage';
 import EditorPage from '@/pages/EditorPage';
+import ApiKeysPage from '@/pages/ApiKeysPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { SignIn, SignUp } from '@clerk/clerk-react';
 
@@ -30,6 +31,7 @@ function App() {
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/editor" element={<EditorPage />} />
+        <Route path="/api-keys" element={<ApiKeysPage />} />
       </Route>
     </Routes>
   );

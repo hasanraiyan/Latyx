@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Menu, X, Zap, ArrowRight } from 'lucide-react';
+import { Menu, X, Zap, ArrowRight, KeyRound } from 'lucide-react';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -70,6 +70,12 @@ export default function Navbar() {
 
             <SignedIn>
               <Button size="sm" variant="ghost" className="gap-1.5" asChild>
+                <Link to="/api-keys">
+                  API Keys
+                  <KeyRound className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
+              <Button size="sm" variant="ghost" className="gap-1.5" asChild>
                 <Link to="/editor">
                   Open Editor
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -116,6 +122,12 @@ export default function Navbar() {
               </SignedOut>
 
               <SignedIn>
+                <Button variant="outline" className="w-full gap-1.5" asChild>
+                  <Link to="/api-keys">
+                    API Keys
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
                 <Button className="w-full gap-1.5" asChild>
                   <Link to="/editor">
                     Open Editor
