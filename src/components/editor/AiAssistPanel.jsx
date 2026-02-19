@@ -183,10 +183,66 @@ function getToolMetadata(tool) {
       };
     default:
       return {
-        label: `Executing ${name}...`,
+        label: `Using ${name}`,
         icon: Wrench,
       };
   }
+}
+
+// ── Step history for completed tools in a turn (Perplexity style) ─────────────
+function StepHistory({ tools }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!tools || tools.length === 0) return null;
+
+  const toolCount = tools.length;
+  const uniqueIcons = Array.from(new Set(tools.map(t => getToolMetadata(t).icon)));
+
+  return (
+    <div className="mb-3 animate-in fade-in slide-in-from-top-1 duration-300">
+      {/* Summary Row */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border/40 bg-muted/20 hover:bg-muted/40 transition-all group"
+      >
+        <div className="flex -space-x-1.5 mr-1">
+          {uniqueIcons.slice(0, 3).map((Icon, i) => (
+            <div key={i} className="w-4 h-4 rounded-full bg-background border border-border/60 flex items-center justify-center shrink-0 shadow-sm">
+              <Icon className="w-2.5 h-2.5 text-primary/70" />
+            </div>
+          ))}
+          {uniqueIcons.length > 3 && (
+            <div className="w-4 h-4 rounded-full bg-background border border-border/60 flex items-center justify-center shrink-0 shadow-sm text-[8px] font-bold text-muted-foreground">
+              +{uniqueIcons.length - 3}
+            </div>
+          )}
+        </div>
+        <span className="text-[10px] font-medium text-muted-foreground/80 group-hover:text-foreground transition-colors">
+          Performed {toolCount} {toolCount === 1 ? 'action' : 'actions'}
+        </span>
+        <ChevronDown className={`w-3 h-3 text-muted-foreground/40 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="mt-2 ml-2 pl-3 border-l-[1.5px] border-border/30 space-y-2 animate-in fade-in slide-in-from-left-1 duration-200">
+          {tools.map((tool, idx) => {
+            const metadata = getToolMetadata(tool);
+            const Icon = metadata.icon;
+            return (
+              <div key={idx} className="flex items-center gap-2 text-[10px] text-muted-foreground/60 transition-colors hover:text-muted-foreground">
+                <div className="w-3.5 h-3.5 rounded-full bg-muted/30 flex items-center justify-center shrink-0 border border-border/10">
+                  <Icon className="w-2 h-2" />
+                </div>
+                <span className="truncate max-w-[180px]">{metadata.label}</span>
+                <div className="flex-1 h-[0.5px] bg-gradient-to-r from-border/20 to-transparent ml-1" />
+                <span className="text-[8px] font-mono tracking-tighter opacity-40 uppercase shrink-0">Done</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Tool call card ──────────────────────────────────────────────────────────
@@ -317,48 +373,65 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
               continue;
             }
 
-            // Group bot turn (consecutive non-user messages)
+            // Group bot turn (consecutive messages until next user or end)
             const turn = [];
             let j = i;
             while (j < totalMessages && messages[j].role !== 'user') {
               turn.push(messages[j]);
               j++;
             }
-
-            const isLastBotTurn = (j === totalMessages);
-            i = j - 1;
+            i = j - 1; // Sync outer loop index
 
             const assistantMsgs = turn.filter(m => m.role === 'assistant');
             const toolMsgs = turn.filter(m => m.role === 'tool');
 
-            // 1. If there's an assistant message, it's the priority. Show it (vanish tools).
+            // Collect all "Completed" tools in this turn for history
+            const completedTools = toolMsgs.filter(tm => !tm.tool.pending).map(tm => tm.tool);
+
+            // Determine what to show in the main content slot
+            // Priority: Last assistant message > Last pending tool > Virtual loading
             if (assistantMsgs.length > 0) {
-              visibleRows.push(...assistantMsgs.map(m => ({ ...m, type: 'chat' })));
-              continue; // Move to next interaction
+              const lastAssistant = assistantMsgs[assistantMsgs.length - 1];
+              visibleRows.push({
+                ...lastAssistant,
+                type: 'chat',
+                history: completedTools
+              });
+            } else if (toolMsgs.length > 0) {
+              const lastTool = toolMsgs[toolMsgs.length - 1];
+              if (lastTool.tool.pending) {
+                visibleRows.push({
+                  ...lastTool,
+                  type: 'tool_card',
+                  // History is everything before this pending tool
+                  history: toolMsgs.slice(0, -1).map(tm => tm.tool)
+                });
+              } else {
+                // All tools finished but no text yet? Show the last one as a card, or loading if active
+                if (j === totalMessages && isLoading) {
+                  visibleRows.push({
+                    role: 'assistant',
+                    type: 'loading',
+                    key: 'virtual-loading',
+                    history: completedTools
+                  });
+                } else {
+                  visibleRows.push({
+                    ...lastTool,
+                    type: 'tool_card',
+                    history: toolMsgs.slice(0, -1).map(tm => tm.tool)
+                  });
+                }
+              }
+            } else if (j === totalMessages && isLoading) {
+              // Edge case: Loading but no bot activity yet (e.g. initial request)
+              visibleRows.push({ role: 'assistant', type: 'loading', key: 'initial-loading' });
             }
-
-            // 2. If no text, check if there's an active (pending) tool.
-            const lastTool = toolMsgs[toolMsgs.length - 1];
-            if (lastTool && lastTool.tool.pending) {
-              visibleRows.push({ ...lastTool, type: 'tool_card' });
-              continue;
-            }
-
-            // 3. If turn has no text and no active tool, but it's the latest bot activity and we are loading:
-            // This covers the case where a tool just finished but assistant hasn't started text yet.
-            if (isLastBotTurn && isLoading) {
-              visibleRows.push({ role: 'assistant', type: 'loading', key: 'virtual-loading' });
-            }
-          }
-
-          // Edge case: Loading at the very beginning or after a user message with no bot turn yet.
-          const lastMsg = messages[totalMessages - 1];
-          const hasLastActivityLoading = visibleRows.length > 0 && visibleRows[visibleRows.length - 1].type === 'loading';
-          if (isLoading && (!lastMsg || lastMsg.role === 'user') && !hasLastActivityLoading) {
-            visibleRows.push({ role: 'assistant', type: 'loading', key: 'initial-loading' });
           }
 
           return visibleRows.map((msg, i) => {
+            const isLoadingState = msg.type === 'loading' || (msg.type === 'tool_card' && msg.tool.pending);
+
             return (
               <div
                 key={msg.key || msg.id || i}
@@ -366,28 +439,40 @@ export default function AiAssistPanel({ messages, assistStatus, onAssist, onClea
               >
                 {/* Avatar */}
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-1 shadow-sm ${msg.role === 'user'
-                    ? 'bg-primary ring-2 ring-primary/20'
-                    : 'bg-muted border border-border'
-                    }`}
+                  className={`relative w-6 h-6 shrink-0 mt-1 flex items-center justify-center`}
                 >
-                  {msg.role === 'user' ? (
-                    <User className="w-3.5 h-3.5 text-primary-foreground" />
+                  {isLoadingState ? (
+                    <div className="absolute inset-0">
+                      <div className="gemini-loading-ring" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Bot className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                    </div>
                   ) : (
-                    <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                    <div
+                      className={`w-full h-full rounded-full flex items-center justify-center shadow-sm ${msg.role === 'user'
+                        ? 'bg-primary ring-2 ring-primary/20'
+                        : 'bg-muted border border-border'
+                        }`}
+                    >
+                      {msg.role === 'user' ? (
+                        <User className="w-3.5 h-3.5 text-primary-foreground" />
+                      ) : (
+                        <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                      )}
+                    </div>
                   )}
                 </div>
 
                 {/* Content */}
                 <div className={`flex-1 min-w-0 ${msg.role === 'user' ? 'max-w-[85%]' : 'max-w-[95%]'}`}>
+                  {/* Step History (for bot turns with previous activity) */}
+                  <StepHistory tools={msg.history} />
+
                   {msg.type === 'tool_card' ? (
                     <ToolCard tool={msg.tool} />
                   ) : msg.type === 'loading' ? (
-                    <div className="bg-muted rounded-2xl rounded-tl-sm px-3.5 py-2.5 flex items-center gap-1.5 shadow-sm border border-border/40 w-fit">
-                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
-                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
-                      <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
-                    </div>
+                    null // Explicit loading rows are shown via the avatar
                   ) : (
                     <div
                       className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${msg.role === 'user'
